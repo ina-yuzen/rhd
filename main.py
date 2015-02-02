@@ -3,50 +3,70 @@ import json
 from flask import Flask
 
 app = Flask(__name__)
-board = [[None, None, None], [None, None, None], [None, None, None]]
 
 
-def judge_end(board):
+def judge_winner(board):
     winner = None
+
     for i in range(3):
-        if board[i] == ['o', 'o', 'o'] or (board[0][i] == 'o' and board[1][i] == 'o' and board[2][i] == 'o'):
-            winner = 'o'
-        elif board[i] == ['x', 'x', 'x'] or (board[0][i] == 'x' and board[1][i] == 'x' and board[2][i] == 'x'):
-            winner = 'x'
-    if (board[0][0] == 'o' and board[1][1] == 'o' and board[2][2] == 'o') or \
-            (board[0][2] == 'o' and board[1][1] == 'o' and board[2][0] == 'o'):
-        winner = 'o'
-    elif (board[0][0] == 'x' and board[1][1] == 'x' and board[2][2] == 'x') or \
-            (board[0][2] == 'x' and board[1][1] == 'x' and board[2][0] == 'x'):
-        winner = 'x'
+        if board[i][0] == board[i][1] == board[i][2]:
+            winner = board[i][0]
+        elif board[0][i] == board[1][i] == board[2][i]:
+            winner = board[0][i]
+
+    if board[0][0] == board[1][1] == board[2][2]:
+        winner = board[0][0]
+    elif board[0][2] == board[1][1] == board[2][0]:
+        winner = board[0][2]
+
     return winner
 
 
-@app.route('/game/<mark>/<int:x>/<int:y>')
+@app.route('/<mark>/<int:x>/<int:y>')
+def put_mark_and_return(mark, x, y):
+    winner = put_mark(mark, x, y)
+
+    if winner:
+        return return_value()
+
+    wait_until_change()
+
+    return return_value()
+
+
 def put_mark(mark, x, y):
     global board
     board[x][y] = mark
-    winner = judge_end(board)
-    if winner is not None:
-        return json.dumps({'status': '%sが勝ちました。' % winner, 'winner': winner, 'board': board}, ensure_ascii=False)
+    return judge_winner(board)
 
+
+def wait_until_change():
+    global board
     preserved = deepcopy(board)
     while preserved == board:
         pass
-
-    winner = judge_end(board)
-    if winner is not None:
-        return json.dumps({'status': '%sが勝ちました。' % winner, 'winner': winner, 'board': board}, ensure_ascii=False)
-
-    return json.dumps({'status': 'OKです。', 'board': board}, ensure_ascii=False)
 
 
 @app.route('/init')
 def initialize():
     global board
     board = [[None, None, None], [None, None, None], [None, None, None]]
-    return json.dumps({'status': 'OKです。', 'board': board}, ensure_ascii=False)
+    return return_value()
+
+
+@app.route('/wait')
+def wait_first():
+    initialize()
+    wait_until_change()
+    return return_value()
+
+
+def return_value():
+    global board
+    winner = judge_winner(board)
+    return json.dumps({'board': board, 'winner': winner}, ensure_ascii=False)
 
 
 if __name__ == '__main__':
+    initialize()
     app.run(debug=True, threaded=True)
